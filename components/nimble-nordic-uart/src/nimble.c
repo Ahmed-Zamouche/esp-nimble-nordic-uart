@@ -185,17 +185,14 @@ static void ble_host_task(void *param) {
 }
 
 // Split the message in BLE_SEND_MTU and send it.
-esp_err_t _nordic_uart_send(const char *message) {
-  const int len = strlen(message);
-  if (len == 0)
-    return ESP_OK;
+esp_err_t _nordic_uart_write(const char *buf, int len) {
   // Split the message in BLE_SEND_MTU and send it.
   for (int i = 0; i < len; i += BLE_SEND_MTU) {
     int err;
     struct os_mbuf *om;
     int err_count = 0;
   do_notify:
-    om = ble_hs_mbuf_from_flat(&message[i], MIN(BLE_SEND_MTU, len - i));
+    om = ble_hs_mbuf_from_flat(&buf[i], MIN(BLE_SEND_MTU, len - i));
     err = ble_gattc_notify_custom(ble_conn_hdl, notify_char_attr_hdl, om);
     if (err == BLE_HS_ENOMEM && err_count++ < 10) {
       vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -205,6 +202,14 @@ esp_err_t _nordic_uart_send(const char *message) {
       return ESP_FAIL;
   }
   return ESP_OK;
+}
+
+// Split the message in BLE_SEND_MTU and send it.
+esp_err_t _nordic_uart_send(const char *message) {
+  const int len = strlen(message);
+  if (len == 0)
+    return ESP_OK;
+  return _nordic_uart_write(message, len);
 }
 
 /***
